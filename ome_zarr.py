@@ -91,8 +91,9 @@ class BaseZarr:
     def load_omero_metadata(self):
         """Load OMERO metadata as json and convert for napari"""
         metadata = {}
+        image_data = self.image_data
         try:
-            print(self.image_data)
+            print(image_data)
             colormaps = []
             for ch in image_data['channels']:
                 # 'FF0000' -> [1, 0, 0]
