@@ -7,7 +7,7 @@ from typing import Any, Dict, Iterator, List, Optional, Type, Union, cast
 
 import dask.array as da
 import numpy as np
-from dask import delayed
+from dask import delayed, optimize
 from vispy.color import Colormap
 
 from .io import BaseZarrLocation
@@ -421,21 +421,27 @@ class Plate(Spec):
         lazy_reader = delayed(get_tile)
 
         def get_lazy_plate(level: int) -> da.Array:
+            tile_size = img_pyramid_shapes[level]
             lazy_rows = []
             # For level 0, return whole image for each tile
             for row in range(rows):
-                lazy_row: List[da.Array] = []
+                lazy_tiles: List[da.Array] = []
                 for col in range(cols):
                     tile_name = f"{level},{row},{col}"
                     print(f"creating lazy_reader. level:{level} row:{row} col:{col}")
-                    tile_size = img_pyramid_shapes[level]
                     lazy_tile = da.from_delayed(
                         lazy_reader(tile_name), shape=tile_size, dtype=numpy_type
                     )
-                    lazy_row.append(lazy_tile)
-                lazy_rows.append(da.concatenate(lazy_row, axis=4))
+                    lazy_tiles.append(lazy_tile)
+                lazy_rows.append(da.concatenate(lazy_tiles, axis=4))
                 print("lazy_row.shape", lazy_rows[-1].shape)
-            return da.concatenate(lazy_rows, axis=3)
+
+            lazy_plate = da.concatenate(lazy_rows, axis=3)
+            # https://docs.dask.org/en/latest/api.html#dask.optimize
+            # lazy_plate2 = optimize(lazy_plate)
+            # print('LZY plate', lazy_plate2[0])
+            # return lazy_plate2[0]
+            return lazy_plate
 
         pyramid = []
 
